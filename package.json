@@ -19,6 +19,7 @@
   "homepage": "https://github.com/PreslandBoy/peggy-j#readme",
   "dependencies": {
     "@auth0/s3": "^1.0.0",
+    "cli-progress": "^3.8.2",
     "clone-buffer": "^1.0.0",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",

@@ -3,7 +3,7 @@ var timestamps = require('mongoose-timestamp');
 
 var schema = new mongoose.Schema({
     originalUrl: { type: 'String' },
-    savedUrl: { type: 'String' },
+    s3Path: { type: 'String' },
     originalWidth: { type: 'Number' },
     originalHeight: { type: 'Number' },
     savedWidth: { type: 'Number' },
