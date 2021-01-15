@@ -4,7 +4,7 @@
   "description": "peggy-j",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon --exec babel-node --presets='@babel/preset-env' ./src/index.js",
+    "start": "nodemon --exec babel-node ./src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -18,11 +18,15 @@
   },
   "homepage": "https://github.com/PreslandBoy/peggy-j#readme",
   "dependencies": {
+    "@auth0/s3": "^1.0.0",
+    "clone-buffer": "^1.0.0",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "jimp": "^0.16.1",
+    "mime-types": "^2.1.28",
     "mongoose": "^5.11.11",
-    "mongoose-timestamp": "^0.6.0"
+    "mongoose-timestamp": "^0.6.0",
+    "randomstring": "^1.1.5"
   },
   "devDependencies": {
     "@babel/core": "^7.12.10",
