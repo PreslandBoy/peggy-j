@@ -1,0 +1,15 @@
+var mongoose = require('mongoose');
+var timestamps = require('mongoose-timestamp');
+
+var schema = new mongoose.Schema({
+    originalUrl: { type: 'String' },
+    savedUrl: { type: 'String' },
+    originalWidth: { type: 'Number' },
+    originalHeight: { type: 'Number' },
+    savedWidth: { type: 'Number' },
+    savedHeight: { type: 'Number' }
+});
+
+schema.plugin(timestamps)
+
+export default mongoose.model('Image', schema);
