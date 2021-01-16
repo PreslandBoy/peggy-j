@@ -30,9 +30,9 @@ const cronJobs = new CronJobs(s3);
 app.get('/', (req, res) => {
 
     if (!req.query.w && !req.query.h) {
-        return res.sendStatus(400);
+        return res.sendStatus(200);
     } else if (!req.query.url) {
-        return res.sendStatus(400);
+        return res.sendStatus(200);
     }
 
     var mimeType;
