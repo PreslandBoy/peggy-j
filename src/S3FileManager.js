@@ -26,6 +26,24 @@ class S3FileManager {
             }
         });
     }
+
+    downloadImage(key) {
+        return this.client.downloadBuffer({
+            Bucket: process.env.S3_BUCKET,
+            Key: key
+        });
+    }
+
+    deleteImages(keys) {
+        return this.client.deleteObjects({
+            Bucket: process.env.S3_BUCKET,
+            Delete: {
+                Objects: keys.map((key) => ({
+                    Key: key
+                }))
+            }
+        });
+    }
 }
 
 export default S3FileManager;

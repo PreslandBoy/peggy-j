@@ -7,7 +7,8 @@ var schema = new mongoose.Schema({
     originalWidth: { type: 'Number' },
     originalHeight: { type: 'Number' },
     savedWidth: { type: 'Number' },
-    savedHeight: { type: 'Number' }
+    savedHeight: { type: 'Number' },
+    accessedAt: { type: 'Date' }
 });
 
 schema.plugin(timestamps)

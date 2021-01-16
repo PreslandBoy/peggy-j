@@ -12,6 +12,8 @@ import LocalFileManager from './LocalFileManager';
 import S3FileManager from './S3FileManager';
 import DBManager from './DBManager';
 import progress from 'cli-progress';
+import moment from 'moment';
+import CronJobs from './CronJobs';
 
 // TODO: Connect MongoDB
 // TODO: Connect S3
@@ -23,6 +25,7 @@ const port = process.env.PORT ? process.env.PORT : 3000;
 const app = express();
 
 const s3 = new S3FileManager();
+const cronJobs = new CronJobs(s3);
 
 app.get('/', (req, res) => {
 
@@ -36,71 +39,109 @@ app.get('/', (req, res) => {
     var extension;
     var originalWidth;
     var originalHeight;
-    var resizedJimp;
+    var imageJimp;
     var image;
 
     Jimp.read(req.query.url).then((image) => {
         originalWidth = image.bitmap.width;
         originalHeight = image.bitmap.height;
-        return image.resize(Number.parseInt(req.query.w), Jimp.AUTO);
-    }).then((resizedImage) => {
-        resizedJimp = resizedImage;
-        mimeType = resizedImage.getMIME();
-        extension = `.${mime.extension(mimeType)}`
-        return resizedImage.getBufferAsync(mimeType);
-    }).then((newImageBuffer) => {
+        imageJimp = image;
+        return DBManager.getExistingImageData(req.query.url, originalWidth, req.query.w);
+    }).then((savedData) => {
+
+        if (savedData) {
+            // get saved image
+            var downloader = s3.downloadImage(savedData.s3Path);
+
+            var progressBar = new progress.SingleBar({}, progress.Presets.shades_classic);
+            console.log('Downloading from S3...');
+            progressBar.start(100, 0);
+
+            downloader.on('progress', () => {
+                progressBar.update(Math.round((downloader.progressAmount/downloader.progressTotal)*100));
+            })
+
+            downloader.on('end', (buffer) => {
+                progressBar.stop();
+                console.log('Downloaded from S3.');
+                res.send(buffer)
+            })
+
+            downloader.on('error', (err) => {
+                console.log(err);
+                progressBar.stop();
+                res.sendStatus(500);
+            })
+
+        } else {
+            resizeAndSave().catch((err) => {
+                console.log(err);
+                LocalFileManager.deleteTempFile(`./temp/${image.key}${extension}`);
+                res.sendStatus(500);
+            });
+        }
+
+    })
+
+    function resizeAndSave() {
+
         var key = randstr.generate();
-        return LocalFileManager.writeTempFile(`./temp/${key}${extension}`, key, newImageBuffer);
-    }).then((theImage) => {
-        image = theImage;
 
-        res.send(theImage.buffer);
+        imageJimp.resize(Number.parseInt(req.query.w), Jimp.AUTO)
 
-        var progressBar = new progress.SingleBar({}, progress.Presets.shades_classic);
+        mimeType = imageJimp.getMIME();
+        extension = `.${mime.extension(mimeType)}`;
 
-        var uploader = s3.uploadImage(theImage, extension);
-        console.log('Uploading to S3...');
-        progressBar.start(100, 0);
+        return imageJimp.getBufferAsync(mimeType).then((newImageBuffer) => {
+            return LocalFileManager.writeTempFile(`./temp/${key}${extension}`, key, newImageBuffer);
+        }).then((theImage) => {
+            image = theImage;
 
-        uploader.on('progress', () => {
-            progressBar.update(Math.round((uploader.progressAmount/uploader.progressTotal)*100));
-        })
+            res.send(theImage.buffer);
 
-        return new Promise((resolve, reject) => {
-            uploader.on('end', () => {
-                progressBar.stop();
-                console.log('Uploaded to S3...');
-                resolve();
+            var progressBar = new progress.SingleBar({}, progress.Presets.shades_classic);
+
+            var uploader = s3.uploadImage(theImage, extension);
+            console.log('Uploading to S3...');
+            progressBar.start(100, 0);
+
+            uploader.on('progress', () => {
+                progressBar.update(Math.round((uploader.progressAmount/uploader.progressTotal)*100));
             })
 
-            uploader.on('error', (err) => {
-                progressBar.stop();
-                reject(err);
-            })
-        })
+            return new Promise((resolve, reject) => {
+                uploader.on('end', () => {
+                    progressBar.stop();
+                    console.log('Uploaded to S3.');
+                    resolve();
+                })
 
-    }).then(() => {
-        LocalFileManager.deleteTempFile(`./temp/${image.key}${extension}`);
-        return DBManager.registerImage({
-            originalUrl: req.query.url,
-            s3Path: `${process.env.NODE_ENV}/${image.key}${extension}`,
-            originalWidth: originalWidth,
-            originalHeight: originalHeight,
-            savedWidth: resizedJimp.bitmap.width,
-            savedHeight: resizedJimp.bitmap.height
+                uploader.on('error', (err) => {
+                    progressBar.stop();
+                    reject(err);
+                })
+            })
+
+        }).then(() => {
+            LocalFileManager.deleteTempFile(`./temp/${image.key}${extension}`);
+            return DBManager.registerImage({
+                originalUrl: req.query.url,
+                s3Path: `${process.env.NODE_ENV}/${image.key}${extension}`,
+                originalWidth: originalWidth,
+                originalHeight: originalHeight,
+                savedWidth: imageJimp.bitmap.width,
+                savedHeight: imageJimp.bitmap.height,
+                accessedAt: moment()
+            })
+        }).then((data) => {
+            console.log('Saved to DB.');
         })
-    }).then((data) => {
-        console.log('Saved to DB...');
-    }).catch((err) => {
-        console.log(err);
-        LocalFileManager.deleteTempFile(`./temp/${image.key}${extension}`);
-        res.sendStatus(500);
-    });
+    }
 
 });
 
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true }).then(() => {
-    console.log('DB Connected...')
+    console.log('DB Connected.')
 
 
 
