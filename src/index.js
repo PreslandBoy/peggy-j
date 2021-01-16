@@ -46,6 +46,7 @@ app.get('/', (req, res) => {
         originalWidth = image.bitmap.width;
         originalHeight = image.bitmap.height;
         imageJimp = image;
+        mimeType = imageJimp.getMIME();
         return DBManager.getExistingImageData(req.query.url, originalWidth, req.query.w);
     }).then((savedData) => {
 
@@ -64,6 +65,7 @@ app.get('/', (req, res) => {
             downloader.on('end', (buffer) => {
                 progressBar.stop();
                 console.log('Downloaded from S3.');
+                res.setHeader('Content-Type', mimeType);
                 res.send(buffer)
             })
 
@@ -97,6 +99,7 @@ app.get('/', (req, res) => {
         }).then((theImage) => {
             image = theImage;
 
+            res.setHeader('Content-Type', mimeType);
             res.send(theImage.buffer);
 
             var progressBar = new progress.SingleBar({}, progress.Presets.shades_classic);
